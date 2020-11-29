@@ -44,7 +44,7 @@ var mySkybox;
  * Test values for eyePt, change accordingly with how mesh/skybox appears
  *
  */
-var eyePt = glMatrix.vec3.fromValues(0.215, 1.575, 15.0);
+var eyePt = glMatrix.vec3.fromValues(0.5, 1.0, 13.0);
 /** @global Direction of the view in world coordinates */
 var viewDir = glMatrix.vec3.fromValues(0.0,0.0,-1.0);
 /** @global Up vector for view matrix creation, in world coordinates */
@@ -54,7 +54,7 @@ var viewPt = glMatrix.vec3.fromValues(0.0,0.0,0.0);
 
 //Light parameters
 /** @global Light position in VIEW coordinates */
-var lightPosition = [10,10,10];
+var lightPosition = [-1,-1,-1];
 /** @global Ambient light color/intensity for Phong reflection */
 var lAmbient = [1,1,1];
 /** @global Diffuse light color/intensity for Phong reflection */
@@ -64,11 +64,11 @@ var lSpecular =[1,1,1];
 
 //Material parameters
 /** @global Ambient material color/intensity for Phong reflection */
-var kAmbient = [1.0,1.0,1.0];
+var kAmbient = [0.0,0.0,0.0];
 /** @global Diffuse material color/intensity for Phong reflection */
 var kTerrainDiffuse = [205.0/255.0,163.0/255.0,63.0/255.0];
 /** @global Specular material color/intensity for Phong reflection */
-var kSpecular = [0.0,0.0,0.0];
+var kSpecular = [1.0,1.0,1.0];
 /** @global Shininess exponent for Phong reflection */
 var shininess = 23;
 /** @global Edge color fpr wireframeish rendering */
@@ -272,7 +272,7 @@ function setupSkyboxShaders() {
   vertexShader = loadShaderFromDOM("skyshade-vs");
   fragmentShader = loadShaderFromDOM("skyshade-fs");
 
-  shaderProgram = gl.createProgram();
+  skyboxShaderProgram = gl.createProgram();
   gl.attachShader(skyboxShaderProgram, vertexShader);
   gl.attachShader(skyboxShaderProgram, fragmentShader);
   gl.linkProgram(skyboxShaderProgram);
@@ -288,6 +288,7 @@ function setupSkyboxShaders() {
     
   skyboxShaderProgram.mvMatrixUniform = gl.getUniformLocation(skyboxShaderProgram, "uMVMatrix");
   skyboxShaderProgram.pMatrixUniform = gl.getUniformLocation(skyboxShaderProgram, "uPMatrix");
+}
 
 
 //-------------------------------------------------------------------------
@@ -340,21 +341,21 @@ function setupMesh(filename) {
     myPromise = asyncGetFile(filename);
   
   myPromise.then((retrievedText) => {
-    myMesh.loadFromOBJ(retrievedText);
+    myTriMesh.loadFromOBJ(retrievedText);
     console.log("Yay! got the file");
   })
   .catch(
     (reason) => {
       console.log(`Handle rejected promise (${reason}) here.`);
-  })
+  });
 }
     
 
 /**
- * Setup the skybox
+ * Setup the skybox through skybox class
  */
 function setupSkybox() {
-  mySkybox = new SkyBox();
+  mySkybox = new Skybox();
 }
 
 //----------------------------------------------------------------------------------
@@ -377,14 +378,17 @@ function draw() {
     glMatrix.vec3.add(viewPt, eyePt, viewDir);
     // Then generate the lookat matrix and initialize the MV matrix to that view
     glMatrix.mat4.lookAt(mvMatrix,eyePt,viewPt,up);    
+    
+    //Update light position or you get a strobe effect which is cool to watch but painful on the eyes
+    lightPosition = [-10,30,20];
  
-    if (myTriMesh.isLoaded() && mySkybox.isLoaded()) {
+    if (myTriMesh.loaded() && mySkybox.loaded()) {
         //Draw Terrain
         glMatrix.mat4.rotateX(mvMatrix, mvMatrix,degToRad(eulX));
         glMatrix.mat4.rotateY(mvMatrix, mvMatrix,degToRad(eulY));
         glMatrix.mat4.multiply(mvMatrix, vMatrix, mvMatrix);
         glMatrix.mat4.invert(invMatrix, mvMatrix);
-        vec3.transformMat4(lightPosition, lightPosition, mvMatrix);
+        glMatrix.vec3.transformMat4(lightPosition, lightPosition, mvMatrix);
         setMatrixUniforms();
         setLightUniforms(lightPosition,lAmbient,lDiffuse,lSpecular);
         
@@ -418,11 +422,13 @@ function draw() {
         if(document.getElementById("refract").checked) {
             setTextureUniform(3);
         }
+        
 
         // Create Skybox through skybox class
         setSkyboxUniforms();
         mySkybox.drawTriangles();
         //requestAnimationFrame(draw); 
+        
     }
     
   
@@ -511,63 +517,129 @@ function animate() {
     
 
 /**
- * Create a texture with cubebox in WebGL
+ * Load and setup the texture for London
  */
 function setupTextures() {
   // Create a texture.
   var texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
-
-  const faceInfos = [
-  {
-      target: gl.TEXTURE_CUBE_MAP_POSITIVE_X,
-      url: 'London/pos-x.png',
-  },
-  {
-      target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
-      url: 'London/neg-x.png',
-  },
-  {
-      target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
-      url: 'London/pos-y.png',
-  },
-  {
-      target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
-      url: 'London/neg-y.png',
-  },
-  {
-      target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
-      url: 'London/pos-z.png',
-  },
-  {
-      target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,
-      url: 'London/neg-z.png',
-  },
-  ];
+  var faceInfos = {};
+    faceInfos = [
+        {
+          target: gl.TEXTURE_CUBE_MAP_POSITIVE_X,
+          url: 'London/px.png',
+        },
+        {
+          target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
+          url: 'London/nx.png',
+        },
+        {
+          target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
+          url: 'London/py.png',
+        },
+        {
+          target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
+          url: 'London/ny.png',
+        },
+        {
+          target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
+          url: 'London/pz.png',
+        },
+        {
+          target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,
+          url: 'London/nz.png',
+        },
+      ];
+  
   faceInfos.forEach((faceInfo) => {
-      const {target, url} = faceInfo;
+    var {target, url} = faceInfo;
 
-      // Upload the canvas to the cubemap face.
-      const level = 0;
-      const internalFormat = gl.RGBA;
-      const width = 512;
-      const height = 512;
-      const format = gl.RGBA;
-      const type = gl.UNSIGNED_BYTE;
+    // Upload the canvas to the cubemap face.
+    const level = 0;
+    const internalFormat = gl.RGBA;
+    const width = 512;
+    const height = 512;
+    const format = gl.RGBA;
+    const type = gl.UNSIGNED_BYTE;
 
-      // setup each face so it's immediately renderable
-      gl.texImage2D(target, level, internalFormat, width, height, 0, format, type, null);
+    // setup each face so it's immediately renderable
+    gl.texImage2D(target, level, internalFormat, width, height, 0, format, type, null);
 
-      // Asynchronously load an image
-      const image = new Image();
-      image.src = url;
-      image.addEventListener('load', function() {
-          // Now that the image has loaded make copy it to the texture.
-          gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
-          gl.texImage2D(target, level, internalFormat, format, type, image);
-          gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
-      });
+    // Asynchronously load an image
+    var image = new Image();
+    image.src = url;
+    image.addEventListener('load', function() {
+      // Now that the image has loaded make copy it to the texture.
+      gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+      gl.texImage2D(target, level, internalFormat, format, type, image);
+      gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+    });
   });
   gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
   gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+
+}
+
+/**
+ * Load and setup the texture for Bardeen Quad
+ */
+function setupTextures2() {
+  // Create a texture.
+  var texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+  var faceInfos = {};
+    faceInfos = [
+        {
+          target: gl.TEXTURE_CUBE_MAP_POSITIVE_X,
+          url: 'Bardeen/px.png',
+        },
+        {
+          target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
+          url: 'Bardeen/nx.png',
+        },
+        {
+          target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
+          url: 'Bardeen/py.png',
+        },
+        {
+          target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
+          url: 'Bardeen/ny.png',
+        },
+        {
+          target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
+          url: 'Bardeen/pz.png',
+        },
+        {
+          target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,
+          url: 'Bardeen/nz.png',
+        },
+      ];
+  
+  faceInfos.forEach((faceInfo) => {
+    var {target, url} = faceInfo;
+
+    // Upload the canvas to the cubemap face.
+    const level = 0;
+    const internalFormat = gl.RGBA;
+    const width = 512;
+    const height = 512;
+    const format = gl.RGBA;
+    const type = gl.UNSIGNED_BYTE;
+
+    // setup each face so it's immediately renderable
+    gl.texImage2D(target, level, internalFormat, width, height, 0, format, type, null);
+
+    // Asynchronously load an image
+    var image = new Image();
+    image.src = url;
+    image.addEventListener('load', function() {
+      // Now that the image has loaded make copy it to the texture.
+      gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+      gl.texImage2D(target, level, internalFormat, format, type, image);
+      gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+    });
+  });
+  gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+
 }

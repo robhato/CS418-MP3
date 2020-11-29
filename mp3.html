@@ -5,48 +5,172 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<title>WebGL - Textures - Skybox</title>
-//<link type="text/css" href="resources/webgl-tutorials.css" rel="stylesheet" />
+<title>Saturday Night Light Matricies</title>
 </head>
-<body>
-<div class="description">
-Skybox using a cubemap.<br/>
-</div>
-<canvas id="canvas" width="800" height="800"></canvas>
-</body>
-<!-- vertex shader -->
-<script id="vertex-shader-3d" type="x-shader/x-vertex">
-attribute vec4 a_position;
-varying vec4 v_position;
-void main() {
-  v_position = a_position;
-  gl_Position = a_position;
-  gl_Position.z = 1.0;
-}
-</script>
-<!-- fragment shader -->
-<script id="fragment-shader-3d" type="x-shader/x-fragment">
-precision mediump float;
+    
+<!-- vertex shader for mesh -->
+<script id="shader-vs" type="x-shader/x-vertex">
+  attribute vec3 aVertexNormal;
+  attribute vec3 aVertexPosition;
+ 
+  uniform mat4 uMVMatrix;
+  uniform mat4 uPMatrix;
+  uniform mat3 uNMatrix;
+  uniform mat4 uINVMatrix;
+  uniform int uTxtr;
+  
+  varying vec3 vPosition;
+  varying vec3 vNormal;
+  varying vec3 vLightDir;
 
-uniform samplerCube u_skybox;
-uniform mat4 u_viewDirectionProjectionInverse;
+  void main(void) {
+    
+    // Get the vertex position in eye coordinates and send to the fragment shader
+    vec4 vertexPositionEye4 = uMVMatrix * vec4(aVertexPosition, 1.0);
+    vPosition = vertexPositionEye4.xyz / vertexPositionEye4.w;
+    
+    // Transform the normal (n) to eye coordinates and send to the fragment shader
+    vNormal = normalize(uNMatrix * aVertexNormal);
 
-varying vec4 v_position;
-void main() {
-  vec4 t = u_viewDirectionProjectionInverse * v_position;
-  gl_FragColor = textureCube(u_skybox, normalize(t.xyz / t.w));
-}
+    gl_Position = uPMatrix*uMVMatrix*vec4(aVertexPosition, 1.0);
+
+    // Taken from lecture slides on Environment Mapping
+    vec3 eyePos = normalize(mat3(uINVMatrix) * vPosition);
+    vec3 N = normalize(mat3(uINVMatrix) * vNormal);
+
+    if (uTxtr == 2) {
+      vLightDir = reflect(eyePos, N);
+    } else if (uTxtr == 3) {
+      vLightDir = refract(eyePos, N, 1.00/1.52);
+    }
+  }
 </script>
-<!--
-for most samples webgl-utils only provides shader compiling/linking and
-canvas resizing because why clutter the examples with code that's the same in every sample.
-See https://webglfundamentals.org/webgl/lessons/webgl-boilerplate.html
-and https://webglfundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html
-for webgl-utils, m3, m4, and webgl-lessons-ui.
--->
+<!-- fragment shader for mesh -->
+<script id="shader-fs" type="x-shader/x-fragment">
+  precision mediump float;
+  precision highp int;
+
+  uniform vec3 uLightPosition;
+  uniform vec3 uAmbientLightColor;
+  uniform vec3 uDiffuseLightColor;
+  uniform vec3 uSpecularLightColor;
+
+  uniform vec3 uKAmbient;
+  uniform vec3 uKDiffuse;
+  uniform vec3 uKSpecular;
+  uniform float uShininess;
+  uniform int uTxtr;
+  uniform samplerCube uSkybox;
+
+  varying vec3 vPosition;
+  varying vec3 vNormal;
+  varying vec3 vLightDir;
+
+  void main(void) {
+    if (uTxtr == 1) {
+    // Calculate the vector (l) to the light source
+    vec3 vectorToLightSource = normalize(uLightPosition - vPosition);
+    
+    // Calculate n dot l for diffuse lighting
+    float diffuseLightWeightning = max(dot(vNormal, 
+                                    vectorToLightSource), 0.0);                           
+    
+   // Calculate the reflection vector (r) that is needed for specular light
+  vec3 reflectionVector = normalize(reflect(-vectorToLightSource, 
+                                           vNormal));
+  
+  // The camera in eye coordinates is located in the origin and is pointing
+  // along the negative z-axis. Calculate viewVector (v) 
+  // in eye coordinates as:
+  // (0.0, 0.0, 0.0) - vPosition
+  vec3 viewVectorEye = -normalize(vPosition);
+
+  float rdotv = max(dot(reflectionVector, viewVectorEye), 0.0);
+    
+  float specularLightWeightning = pow(rdotv, uShininess);
+
+    // Sum up all three reflection components
+    gl_FragColor = vec4(((uAmbientLightColor*uKAmbient)
+                + (uDiffuseLightColor*uKDiffuse) * diffuseLightWeightning
+                + ((uSpecularLightColor*uKSpecular) * specularLightWeightning)),1.0);
+    } else if (uTxtr == 2) {
+      // Reflecttion
+      gl_FragColor = textureCube(uSkybox, normalize(vLightDir));
+    } else {
+      // Refraction
+      vec4 fragColor = textureCube(uSkybox, normalize(vLightDir));
+      fragColor = mix(fragColor, vec4(1,1,1,1), 0.1);
+      gl_FragColor = fragColor;
+    }
+ }
+</script>
+    
+<!-- vertex shader for skybox -->
+<script id="skyshade-vs" type="x-shader/x-vertex">
+  attribute vec3 aVertexPosition;
+  
+  uniform mat4 uMVMatrix;
+  uniform mat4 uPMatrix;
+  
+  varying vec3 vNormal;
+  
+  void main(void) {
+    gl_Position = uPMatrix*uMVMatrix*vec4(aVertexPosition, 1.0);
+    vNormal = normalize(aVertexPosition.xyz);
+  }
+</script>
+<!-- fragment shader for skybox-->
+<script id="skyshade-fs" type="x-shader/x-fragment">
+  precision mediump float;
+  uniform samplerCube uSkybox;
+  
+  varying vec3 vNormal;
+  
+  void main(void) {
+    gl_FragColor = textureCube(uSkybox, normalize(vNormal));
+  }
+</script>
+
+<script src="gl-matrix-min.js"></script>
 <script src="webgl-utils.js"></script>
-<script src="m4.js"></script>
-    <script src="mp3.js"></script>
+<script src="TriMesh.js"></script>
+<script src="sky.js"></script>
+<script src="mp3.js"></script>
+
+<body onload="startup();">
+  <canvas id="myGLCanvas" width="760" height="760"></canvas>
+    <h1>Environment Mapping featuring multiple skyboxes and a teapot with multiple texturing methods</h1>
+    <h2>Author: Jaideep Bhat</h2>
+    <br>
+    <form id="input_form">
+      <fieldset>
+         <legend>Instructions for Movement</legend>
+         <div>Move View Left and Right: Arrow Keys Left and Right</div>
+          <br>
+         <div>Move View Up and Down: Arrow Keys Up and Down</div>
+      </fieldset>
+      <fieldset>
+        <legend>Rendering Parameters</legend>
+        <input type="radio" name="primitive" id="wireframe" value="wireframe"> Wireframe
+        <input type="radio" name="primitive" id="polygon" value="polygon" checked> Polygon
+        <input type="radio" name="primitive" id="wirepoly" value="wirepoly"> Polygon with Edges
+      </fieldset>
+      <br>
+      <fieldset>
+        <legend>Mode</legend>
+        <input type="radio" name="mode" id="phong" value="phong"> Phong
+        <input type="radio" name="mode" id="reflect" value="reflect" checked> Reflective
+        <input type="radio" name="mode" id="refract" value="refract"> Refractive
+      </fieldset>
+      <br>
+      <fieldset>
+        <legend>Skybox Texture</legend>
+        <button type="button" onclick="setupTextures();">London</button>
+        <button type="button" onclick="setupTextures2();">Bardeen</button>
+      </fieldset>
+    </form>
+</body>
+
 </html>
 
 

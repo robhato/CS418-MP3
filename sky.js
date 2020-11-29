@@ -3,7 +3,7 @@
  * Reference for class construction taken from TriMesh.js
  */
 
-class Skybox() {
+class Skybox {
 /**
  * Initialize members of a Skybox object
  */
@@ -31,6 +31,9 @@ class Skybox() {
         else{
             console.log("OES_element_index_uint is supported!");
         }
+        
+        this.drawCube();
+        console.log("SkyBox: Mesh created");
     }
     
     /**
@@ -44,30 +47,26 @@ class Skybox() {
     * Creates the cube mesh to use for the skybox
     */
     drawCube(){
+        // Dictionary storing faces of the cube
+        // Each face is defined by two triangles therefore there are 6 verticies per each face and "12" faces
         const faces = [
           {
             f: [0, 1, 2, 0, 3, 2],
-            n: [0, 0, 1]
           },
           {
             f: [4, 5, 6, 4, 7, 6],
-            n: [0, 0, -1]
           },
           {
             f: [3, 2, 6, 3, 7, 6],
-            n: [0, 1, 0]
           },
           {
             f: [0, 1, 5, 0, 4, 5],
-            n: [0, -1, 0]
           },
           {
             f: [2, 1, 5, 2, 6, 5],
-            n: [1, 0, 0]
           },
           {
             f: [4, 0, 3, 4, 7, 3],
-            n: [-1, 0, 0]
           },
         ];
         

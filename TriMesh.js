@@ -52,8 +52,8 @@ class TriMesh{
     * Find a box defined by min and max XYZ coordinates
     */
     computeAABB(){
-        // vec3 object to store xyz vertex info
-        var vecT = vec3.create()
+        // glMatrix.vec3 object to store xyz vertex info
+        var vecT = glMatrix.glMatrix.vec3.create()
         for (var i = 0; i < this.fBuffer.length; i++) {
             // Return the x,y,z coords of a vertex at location id - in this case, vecT stores the vertex info for the verticies in the face buffer
             this.getVertex(this.fBuffer[i], vecT);
@@ -80,6 +80,7 @@ class TriMesh{
             minXYZ[i] = this.minXYZ[i];
             maxXYZ[i] = this.maxXYZ[i];
         }
+        return [minXYZ,max];
     }
     
     /**
@@ -91,32 +92,31 @@ class TriMesh{
     
         //Your code here
         //split each line using newline key
-        var text = fileText.split("\n");
-        for (var i = 0; i < text.length; i++) {
-            var line = text[i];
-            // if the line begins with "#" it is a comment so continue to the next line
-            if (line[0] == "#") {
-                continue;
-            } else {
-                var tokens = line.split(/\b\s+(?!$)/);
-                if (tokens[0] == "v") {
-                    for (var x = 0; x < tokens.length; x++) {
-                        this.vBuffer.push(parseFloat(tokens[x]));
-                    }
-                } else if (tokens[0] == "f") {
-                    for (var y = 0; y < tokens.length; y++) {
-                        // NOTE..objvertex indices start at 1...you need to subtract one if your arrays will start at 0 - Thus 1 is subtracted from tokens array in order to keep information accurate
-                        this.fBuffer.push(parseInt(tokens[y]-1));
-                    }
-                }
+        var lines = fileText.split('\n');
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i];
+          // if the line begins with a "#" it is a comment so skip it
+          if (line[0] == '#') {
+            continue;
+          } else {
+            //regex
+            const construct = /\b\s+(?!$)/;
+            var data = line.split(construct);
+            if (data[0] == 'v') {
+              this.vBuffer.push(parseFloat(data[1]));
+              this.vBuffer.push(parseFloat(data[2]));
+              this.vBuffer.push(parseFloat(data[3]));
+              this.numVertices++;
+            } else if (data[0] == 'f') {
+              // NOTE..objvertex indices start at 1...you need to subtract one if your arrays will start at 0 - Thus 1 is subtracted from tokens array in order to keep information accurate
+              this.fBuffer.push(parseInt(data[1]) - 1);
+              this.fBuffer.push(parseInt(data[2]) - 1);
+              this.fBuffer.push(parseInt(data[3]) - 1);
+              this.numFaces++;
             }
+          }
         }
-        
-        
-        this.numVertices = this.vBuffer.length/3;
-        this.numFaces = this.fBuffer.length/3;
-        
-        
+
         
         
         //----------------
@@ -129,7 +129,7 @@ class TriMesh{
         this.generateLines();
         console.log("TriMesh: Generated lines");
         
-        myMesh.loadBuffers();
+        myTriMesh.loadBuffers();
         this.isLoaded = true;
     }
     
@@ -304,21 +304,21 @@ generateNormals(){
         {
             // Get vertex coodinates
             var v1 = this.fBuffer[3*i]; 
-            var v1Vec = vec3.fromValues(this.vBuffer[3*v1], this.vBuffer[3*v1+1],                                           this.vBuffer[3*v1+2]);
+            var v1Vec = glMatrix.vec3.fromValues(this.vBuffer[3*v1], this.vBuffer[3*v1+1],                                           this.vBuffer[3*v1+2]);
             var v2 = this.fBuffer[3*i+1]; 
-            var v2Vec = vec3.fromValues(this.vBuffer[3*v2], this.vBuffer[3*v2+1],                                           this.vBuffer[3*v2+2]);
+            var v2Vec = glMatrix.vec3.fromValues(this.vBuffer[3*v2], this.vBuffer[3*v2+1],                                           this.vBuffer[3*v2+2]);
             var v3 = this.fBuffer[3*i+2]; 
-            var v3Vec = vec3.fromValues(this.vBuffer[3*v3], this.vBuffer[3*v3+1],                                           this.vBuffer[3*v3+2]);
+            var v3Vec = glMatrix.vec3.fromValues(this.vBuffer[3*v3], this.vBuffer[3*v3+1],                                           this.vBuffer[3*v3+2]);
             
            // Create edge vectors
-            var e1=vec3.create();
-            vec3.subtract(e1,v2Vec,v1Vec);
-            var e2=vec3.create();
-            vec3.subtract(e2,v3Vec,v1Vec);
+            var e1=glMatrix.vec3.create();
+            glMatrix.vec3.subtract(e1,v2Vec,v1Vec);
+            var e2=glMatrix.vec3.create();
+            glMatrix.vec3.subtract(e2,v3Vec,v1Vec);
             
             // Compute  normal
-            var n = vec3.fromValues(0,0,0);
-            vec3.cross(n,e1,e2);
+            var n = glMatrix.vec3.fromValues(0,0,0);
+            glMatrix.vec3.cross(n,e1,e2);
             
             // Accumulate
             for(var j=0;j<3;j++){
@@ -330,10 +330,10 @@ generateNormals(){
         }
     for(var i=0;i<this.numNormals;i++)
         {
-            var n = vec3.fromValues(this.nBuffer[3*i],
+            var n = glMatrix.vec3.fromValues(this.nBuffer[3*i],
                                     this.nBuffer[3*i+1],
                                     this.nBuffer[3*i+2]);
-            vec3.normalize(n,n);
+            glMatrix.vec3.normalize(n,n);
             this.nBuffer[3*i] = n[0];
             this.nBuffer[3*i+1]=n[1];
             this.nBuffer[3*i+2]=n[2];  
