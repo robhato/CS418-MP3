@@ -56,9 +56,9 @@ var viewPt = glMatrix.vec3.fromValues(0.0,0.0,0.0);
 /** @global Light position in VIEW coordinates */
 var lightPosition = [-1,-1,-1];
 /** @global Ambient light color/intensity for Phong reflection */
-var lAmbient = [1,1,1];
+var lAmbient = [1,0,0];
 /** @global Diffuse light color/intensity for Phong reflection */
-var lDiffuse = [1,1,1];
+var lDiffuse = [1,1,0];
 /** @global Specular light color/intensity for Phong reflection */
 var lSpecular =[1,1,1];
 
@@ -70,7 +70,7 @@ var kTerrainDiffuse = [205.0/255.0,163.0/255.0,63.0/255.0];
 /** @global Specular material color/intensity for Phong reflection */
 var kSpecular = [1.0,1.0,1.0];
 /** @global Shininess exponent for Phong reflection */
-var shininess = 23;
+var shininess = 30;
 /** @global Edge color fpr wireframeish rendering */
 var kEdgeBlack = [0.0,0.0,0.0];
 /** @global Edge color for wireframe rendering */
